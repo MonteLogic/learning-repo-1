@@ -1,0 +1,1239 @@
+Received: 25 November 2022    Revised: 25 April 2023     Accepted: 8 May 2023
+
+DOI: 10.33012/navi.604
+
+
+
+ORIGINAL ARTICLE
+
+
+
+
+Atom Strapdown: Toward Integrated Quantum Inertial
+Navigation Systems
+
+Benjamin Tennstedt*1   Ashwin Rajagopalan2                                               Nicolai B. Weddig1      Sven Abend2
+Steffen Schön1  Ernst M. Rasel2
+
+1 Institut für Erdmessung, Leibniz
+
+University Hannover, Lower Saxony,                  Abstract
+Germany                                             We present an alternative technique for estimating the response of a cold atom
+2 Institut für Quantenoptik, Leibniz
+                                                    interferometer (CAI). Using data from a conventional inertial measurement
+University Hannover, Lower Saxony,
+                                                    unit (IMU) and common strapdown terminology, the position of the atom wave
+Germany
+                                                    packet is tracked in a newly introduced sensor frame, enabling hybridization
+Correspondence                                      of both systems in terms of acceleration and angular rate measurements. The
+Benjamin Tennstedt
+                                                    sensor frame allows for an easier mathematical description of the CAI measure-
+Email: tennstedt@ife.uni-hannover.de
+                                                    ment and integration into higher-level navigation systems. The dynamic terms
+                                                    resulting from the transformation of the IMU frame into the CAI sensor frame
+                                                    are evaluated in simulations. The implementation of the method as a prediction
+                                                    model in an extended Kalman filter is explained and demonstrated in realis-
+                                                    tic simulations, showing improvements of over two orders of magnitude with
+                                                    respect to the conventional IMU strapdown solution. Finally, the implications
+                                                    of these findings for future hybrid quantum navigation systems are discussed.
+
+                                                    Keywords
+                                                    atom interferometry, hybridization, inertial navigation, sensor fusion
+
+
+
+                                                1        INTRODUCTION
+
+                                                   Atom interferometry is a highly precise technique for inertial sensing (Kasevich
+                                                et al., 1991). By interrogating a free-evolving atom wave packet with a series of laser
+                                                pulses, information about accelerations and turn rates can be extracted, allowing
+                                                the calculation of a complete navigation solution (position, velocity, and attitude).
+                                                Applications of this technique for accelerometers (Barrett et al., 2014), gyroscopes
+                                                (Gauguet et al., 2009; Schubert et al., 2021), and complete inertial measurement
+                                                units (IMUs) (Gebbe et al., 2021; Gersemann et al., 2020) based on Bose–Einstein
+                                                condensates are currently under research. The potential position accuracy reaches
+                                                5 m after 1 h of inertial navigation (Jekeli, 2005), which makes atom interferometry
+                                                a highly promising technique for navigation in global navigation satellite system
+                                                (GNSS)-denied environments.
+                                                   Commercial options are already available for static settings, i.e., quantum gra-
+                                                vimeters (Vermeulen et al., 2018), and have an accuracy and long-term stability
+                                                comparable or even superior to those of other high-end conventional sensors
+
+NAVIGATION, 70(4)                                            Licensed under CC-BY 4.0                          © 2023 Institute of Navigation
+                                                                      TENNSTEDT et al.
+
+
+
+(Freier et al., 2016). In the case of changing inertial quantities, some challenges
+still remain. The atom interferometer itself has a very limited dynamic range when
+used alone, and conventional measurement models for the interferometer read-
+out are often not suited for highly dynamic trajectories. Thus, in state-of-the-art
+techniques, hybridization with other sensors, such as conventional accelerome-
+ters, is mandatory in order to produce a navigation solution (Cheiney et al., 2018;
+Richardson et al., 2020; Templier et al., 2022; Zahzam et al., 2022).
+   In our prior work (Tennstedt & Schön, 2020), a combination of conventional
+IMUs and atom interferometers in the frame of an extended Kalman filter (EKF)
+was presented. The phase shift of the cold atom interferometer (CAI) is predicted
+from the measurement of the conventional IMU, determining the target fringe
+of the CAI and effectively solving the fringe ambiguity problem. The CAI mea-
+surement is then used to correct the prediction model of the IMU, which enables
+the estimation of a number of IMU error quantities, e.g., sensor bias or misalign-
+ment, based on the state vector configuration (Tennstedt & Schön, 2021) This
+model has been successfully tested with two IMUs of different accuracies, with the
+higher-class IMU emulating an atom interferometer (Weddig et al., 2021). With the
+bias of the conventional IMU corrected, the position drift of the combined navi-
+gation solution was reduced by a factor of 30. In general, the combined solution
+benefits from the superior long-term stability of the CAI, as discussed in Tennstedt
+et al. (2021). This solution was further evaluated for applications on low Earth orbit
+satellites (HosseiniArani et al., 2022), where the electrostatic accelerometer in use
+has a lower white noise density than the CAI, but a larger long-term drift.
+   However, the models introduced thus far have been developed under the assump-
+tion that the atom interferometer is aligned with the body frame of the vehicle.
+In addition, the equations are not scalable, which prevents the integration of one
+or more atom interferometers in a higher-level navigation system. In this paper, a
+suitable coordinate system for the sensor frame is introduced in order to allow an
+easier integration in future high-level navigation and multi-sensor systems. First,
+a system is developed for a general case with several sensor frames, followed by a
+special CAI multi-axis scheme based on differential measurements presented in
+Gersemann et al. (2020). This multi-axis scheme is then used for further evaluation
+in the scope of this paper.
+   The remainder of this paper is structured as follows. The measurement principle
+of CAIs for inertial sensing is briefly summarized in Section 2. The necessity and
+basic idea for hybridization are explained, and two types of hybridization that are
+relevant for this paper are described. In Section 3, the mathematical framework for
+the phase shift prediction, the atom strapdown scheme, is developed. A comparison
+with a second existing hybridization scheme follows in Section 3.2. Performance
+studies are carried out in Section 4 based on simulations, where the phase shift is
+of particular focus. Based on realistic dynamics derived from measurement cam-
+paigns, the single phase shift terms are quantified and visualized in order to gain
+insight and derive requirements for future hybrid sensor designs. Furthermore, the
+error of the predicted phase shift with respect to the CAI observation is tracked
+and discussed. The conclusions of this work are presented in Section 5 with a final
+evaluation.
+
+
+2      ATOM INTERFEROMETRY FOR INERTIAL SENSING
+
+  Atom interferometers use the wave-particle characteristics of an atomic wave
+packet to deduce inertial quantities. In a basic Mach–Zehnder-type configuration,
+TENNSTEDT et al.
+
+
+
+shown in Figure 1, an atomic wave packet is manipulated by a series of three
+directed laser pulses in order to split, reverse, and recombine the internal states of
+the atoms.
+   During the interaction of the atom wave packet with the beam splitter lasers,
+the atoms are set in a superposition of two internal energy states, |1, m〉 and
+| 2, m  k, where m is the momentum of the wave packet,  is the reduced
+Planck constant, and k  4 is the effective laser wave number, which itself is
+related to the wavelength λ , e.g., 780 nm for rubidium. The probability that the
+atoms are in one of the two states oscillates with a certain Rabi frequency Ωeff and
+depends on the time of the laser interaction, the pulse time τ . If the atoms are all
+in state 1 at the beginning of the interaction, they will all switch their state after a
+certain 2τ pulse into state 2, resembling a mirror pulse. Likewise, if the interaction
+lasts for a duration of τ , the probability for a transition is 50% and a state-splitter
+pulse can be realized. During each atom–laser interaction, a phase shift between
+the two states is accumulated because both states yield different momenta. Under
+a number of assumptions such as a symmetric pulse sequence (Antoine & Borde,
+2003), it is sufficient to describe the position of the center of mass of the atoms
+at the mid-point line between both states, as shown in Figure 1. The phase shift
+between the two states then depends on the relative position x of the atoms in
+the sensor frame, as well as the effective wave number k of the lasers for each
+atom–laser interaction. The main limitation of this method is that the trajectories
+of the two atomic states must overlap at the time of the recombination pulse. This
+requirement might be violated in the presence of rotations, where a loss of contrast
+attributed to an insufficient closing of the wave packet trajectory occurs (Roura
+et al., 2014) and a separation phase must be considered.
+
+
+
+
+F IGURE 1 Basic principle of a CAI
+Left: Atom interferometry in the Mach–Zehnder configuration. An atomic wave packet is
+manipulated by directed laser pulses with a separation time T, allowing inertial quantities to be
+extracted from the resulting phase shift. The atom position along the mid-point line (yellow) is
+decisive for the resulting phase shift. Right: Scheme of a CAI. After leaving their source, the
+atoms a are prepared in a three-dimensional magneto-optical trap (MOT). Afterwards, they are
+launched into free propagation, and their states are manipulated by a series of laser pulses. Finally,
+the atoms in one of the states are counted by detecting photons that are emitted after additional
+manipulation steps. A retroreflection mirror is used in order to allow Raman state transitions
+(Kasevich & Chu, 1992) and acts as a spatial phase reference. In this setup, an optomechanical
+resonator (OMR) is used to measure the mirror vibrations, i.e., frame accelerations, and to
+reconstruct the interferometer phase.
+                                                                           TENNSTEDT et al.
+
+
+
+  For the introduced three-pulse Mach–Zehnder configuration and under consid-
+eration of the midpoint-line theorem, the final phase shift φ (t3 ) at the time t3 of
+the last interaction reads as follows:
+
+                        (t3 )  k1 x (t1 )  2k2 x (t2 )  k3 x (t3 )                (1)
+
+  The actual observation after a measurement cycle is the transition probability,
+or population, of the atoms. This population p can be assessed by counting the
+number of atoms in one of the two states, N1 or N 2 . In turn, the population can
+be related back to the phase shift via the following relation:
+
+                                     N1           1
+                            p                     (1  cos  )                      (2)
+                                 N1  N 2         2
+
+   As a didactic example, the phase shift can now be calculated by the inverse
+cosine. To retrieve the inertial effects from the phase shift, additional models are
+needed. Assuming a constant acceleration a, a simple motion equation of x = 21 at 2
+is sufficient. The quantity of interest can then be computed by applying the model
+to Equation (1), plugging the result into Equation (2), and then solving for a. The
+final equation for the inertial quantity in this example is then:
+
+                                     1
+                              a         arccos (2 p  1)                             (3)
+                                    kT 2
+if =
+   k k= 1   k2 = k3 (static setting) and T is the interrogation time between the laser
+pulses, cf., Figure 1.
+   The approach of using the inverse cosine shows one major drawback of the CAI.
+The phase shift is only defined in the interval of 0     , which is a flank of the
+cosine function. For a typical setup with an interrogation time of 10 ms and the
+example above, this range corresponds to an acceleration of only approximately
+2 mm/s². A vibration of the sensor frame may be larger than this value, which leads
+to ambiguity in the CAI measurement.
+   This drawback can be circumvented by either compensating for vibrations via a
+stabilized platform or using different acceleration sensors to measure the vibration
+and to combine the signals via convolution with the CAI response function, cf.,
+Cheiney et al. (2018) or Richardson et al. (2020), in order to enable measurements
+with the atom interferometer.
+   Another way to benefit from the better long-term stability of the CAI is to use
+a conventional IMU as the main sensor and to correct any drift errors with the
+atom interferometer measurement, e.g. Tennstedt & Schön (2020), while the solu-
+tion of the ambiguity problem works in a similar manner. Both techniques will be
+explained in the next section.
+
+
+3      HYBRIDIZATION
+
+  The idea behind hybridization is driven by two objectives. The first objective is to
+resolve the fringe ambiguity. This is done by reconstructing the atom interferome-
+ter phase with the help of high-rate sensors able to resolve signals that would oth-
+erwise exceed the dynamic range of the interferometer. For this step, we propose
+the atom strapdown technique as a prediction method that utilizes acceleration
+and angular rate measurements from an IMU as input.
+  The second objective is to correct the IMU-based prediction model with the
+observation of the atom interferometer. To this end, an EKF is applied with the
+bias of the accelerometers and gyroscopes as a state augmentation.
+TENNSTEDT et al.
+
+
+
+  In the following subsections, this formalism is described, compared with another
+phase reconstruction method that has been previously applied to experimental
+data, and finally implemented in the framework of an EKF.
+
+
+3.1        Phase Reconstruction with Atom Strapdown
+
+  As clarified in the introduction, the phase shift of an atom interferometer pri-
+marily depends on the relative position of the atom wave packet in the sensor
+frame. The basic equations of a typical strapdown algorithm that is used to com-
+pute the kinematic state of a moving platform from accelerometer and gyro-
+scope measurements are adapted in order to estimate the wave packet position
+and its velocity.
+
+
+3.1.1         Sensor Frame Phase Shift Representation
+
+   To allow a more general three-degree-of-freedom formalism, the position vector
+pointing to the center of the atom wave packet a in an arbitrary sensor frame s
+with index j ∈[ x , y, z] will be denoted as x sjsj,a . For now, it is assumed that each
+CAI has only one sensitive direction, defined by its effective wave vector k sj . As
+an example, for j = x , cf., Figure 2, the vector may read k sx = [k, 0, 0]T , where k
+is the effective wave number introduced above. The phase shift φ sj in the corre-
+sponding sensor frame can then be calculated by Equation (1). The origin of the
+s-frame is defined in the exact location at which the atom wave packet is released
+into free propagation. When the first splitter pulse is applied at t1 = 0, the initial
+position in the respective sensor frame is zero, and hence, the phase shift according
+to Equation (1) is reduced to two terms:
+
+                        sj  2 k sj  x sjsj,a (t  T )  k sj  x sjsj,a (t  2T )           (4)
+
+where T is the interrogation time between the laser pulses and ⋅ denotes a scalar
+product.
+
+
+
+
+F IGURE 2 Position vector x sx     sx
+                                      , a pointing to the atom wave packet in the CAI sensor frame sx
+The axis sx 1 corresponds to the forward direction. In this case, the forward direction is aligned
+with the beam splitter laser field and, thus, the sensitive axis k sx of the sensor, indicated by the
+black dotted line. For the other two axes, sx 3 aligned in the downward direction orthogonal to
+sx 1 , and sx 2 completes the right-handed system.
+                                                                                     TENNSTEDT et al.
+
+
+
+     If an IMU is used to estimate the position of the atom wave packets in the sensor
+frame, a framework known from inertial navigation can be utilized: the strapdown
+algorithm. The differential motion equations for the position x sjsj,a and velocity
+v sjsj,a of the respective atom wave packets are as follows:
+
+                              x sjsj,a = v sjsj,a                                              (5)
+
+
+                                                                     
+                              v sjsj,a   fisj, sj  2isj, sj v sjsj,a  g sj                (6)
+
+   Here, fisj, sj are the specific forces, i.e., accelerations, and the term 2Ωisj, sj v sjsj,a
+denotes the Coriolis force, as the atoms have a velocity relative to the s-frame.
+The gravity vector g sj is considered as well. The rotation rates are expressed in
+the skew-symmetric matrix isj, sj  [isj, sj ], where the index i denotes the inertial
+frame. The index s j with j ∈[ x , y, z] denotes the corresponding sensor frame, cf.,
+Figure 3. As an example, the vector v sx  sx
+                                             ,a marks the velocity between the sx frame
+origin and the atom wave packet a in the sx frame, expressed in the sx frame.
+   Note that the equations are solved in the respective s-frame; hence, the change
+in the velocity v sjsj,a of the atom with respect to the s-frame points in the direc-
+tion opposite to the acceleration of the s-frame, cf., Equation (6). This does not
+account for gravity g sj , which affects the motion of the atom wave packet even
+when the s-frame is not accelerated. Gravity can be considered as an external force.
+Additional effects, such as centrifugal and Euler accelerations, that depend on the
+position x sjsj,a are not considered in this study, as their effects are comparably small
+for short interrogation times. For future actual implementations with specified
+CAI parameters, such as the initial position of the atoms in the s-frame, the dif-
+ferential equation (Equation (6)) can be enhanced accordingly. Furthermore, the
+recoil velocity caused by the laser–atom interaction is neglected, as the impact on
+the phase shift is small compared with the effect of the accelerations.
+
+
+
+
+F IGURE 3 Sensor frames as defined in the strapdown model
+All systems are right-handed. The b-frame is the center of the platform, corresponding to the
+frame in which the conventional IMU is placed. Left: General setting. Two sensor frames, sx and
+sy, are depicted, with each one sensitive for a single spatial dimension, indicated by a wavy line.
+A third frame, sz, may be placed with the sensitive axis aligned along the b3 direction. Right:
+Multi-axis scheme. By using a single source and three different laser beam directions aligned with
+the axes of the s frame, acceleration measurements on all spatial axes can be realized.
+TENNSTEDT et al.
+
+
+
+   The differential equations are solved by integration to determine the atom posi-
+tions at times t = T and t = 2T and to calculate the phase via Equation (4). Unless
+otherwise stated, all parameters are time-dependent.
+
+
+3.1.2   Consideration of Spatial Displacements Between
+Sensors
+
+   The accelerations fibb and turn rates Ωibb are now given in a different system b,
+i.e., the body frame with the origin at the center of the IMU. This arrangement
+results in a spatial distance to the s-frame in which the quantities must be trans-
+formed, i.e., a lever arm x bb, sj , cf., Figure 3. As an example, for a very simplistic and
+general design of a three-dimensional atomic sensor system, it can be assumed that
+there are three atomic interferometers with frames sx, sy, and sz, each with a sen-
+sitive axis in one of the spatial dimensions. The transformations of specific forces
+in this case are as follows:
+
+                                                                                             b xb 
+               fisj, sj  fisj,b  fbsj, sj  Cbsj fibb  Cbsj ibb (ibb x bb, sj )  Cbsj            (7)
+                                                                                             ib b, sj
+
+
+   The fictitious forces resulting from the transformation are expressed in the cen-
+                                                        b x b , which results from angular
+trifugal term Ωibb (Ωibb x bb, sj ) and the Euler term Ωib b, sj
+accelerations of the frame. The sensor frames and body frame are all connected to
+a rigid platform; thus, there is no change in the distance x bb, sj , and no Coriolis term
+ Ωibb x bb, sj needs to be considered. This same rigid platform argument allows us to set
+the specific force between both frames to zero, fbsj, sj = 0. A rotation Cbsj between the
+two systems, resembling sensor misalignment, can be included.
+   The transformation of the turn rates is straightforward:
+
+
+                                    isj, sj  isj,b  bsj, sj  Cbsj ibb                           (8)
+
+
+  In analogy to the forces, the rigid platform allows no relative rotation Ωbsj, sj
+between the sensors and body frame, and thus, bsj, sj  0.
+
+
+3.1.3        Multi-Axis Model
+
+   It is assumed that all three CAI sensors use a single atomic source, as displayed
+in Figure 3, cf., Gersemann et al. (2020); thus, a single sensor frame s is sufficient.
+Furthermore, the misalignment between the s and b frames is assumed to be
+zero, and hence, Cbs equals I, the identity matrix.
+   This multi-axis CAI model has three sensitive axes, which are considered in the
+model by their respective k s-vector. For example, for the interferometer sequence
+in the x direction, the vector reads k s = [k x , 0, 0]T , with k x as the respective effec-
+tive wave number. The coordinate center and the starting position of the atoms in
+each direction are identical. Note that in this multi-axis CAI, an initial splitter pulse
+is applied immediately before the Mach–Zehnder sequence, which divides the ini-
+tial wave packet into two counter-propagating ensembles in order to differentiate
+between phase shifts based on linear acceleration and those based on rotation. This
+                                        s and will be important in Section 3.3.
+approach affects the initial velocity v sa
+   According to Equation (4), the phase shift φ s depends on the position x s of the
+atoms in the s-frame. We can state the following:
+                                                                                            TENNSTEDT et al.
+
+
+
+                                     x s  x acc
+                                             s  xs  xs
+                                                  rot  mix                                             (9)
+
+with the single position terms caused by linear acceleration x accs , rotation x s ,
+                                                                                 rot
+                                                                            s
+and effects of a changing rotation vector during the integration interval x mix now
+explained in detail.
+
+
+Acceleration
+
+  The position of the atoms in the laser frame s, as measured by a conventional
+accelerometer in the b-frame, is calculated as follows:
+
+
+                            t
+                     s 
+                   x acc    fibs  g s  ibs (ibs x bss )   ibs x bss  dt 2               (10)
+                                0
+
+
+
+   In the position shift caused by linear accelerations, three terms are involved in
+addition to gravity g s : the specific forces fibs measured by the conventional accel-
+erometer, the centrifugal term Ωibs (Ωibs x bs
+                                            s ) due to the lever arm, and the Euler term
+  s  s
+Ωib x bs resulting from a change in turn rate.
+
+
+Rotation
+
+ The atom position shift based on a rotation of the s-frame results from the
+Coriolis term alone:
+
+                                             t
+                                      s 
+                                    x rot   2ibs v ss,a  dt 2                                  (11)
+                                                 0
+
+
+
+Coning
+
+  The presence of turn rates during the measurement interval leads to a change
+in orientation vector of the s-frame, which must be considered. An additional
+coning/sculling mixture term appears, cf., Savage (1998), which will subsequently
+be labeled with the subscript mix. The position of the atoms in the laser frame is
+then as follows:
+
+
+                      t t            
+                s
+              x mix      ibs dt   g s  fibs  ibs (ibs x bs   s x s  dt 2 
+                                                                     s )                             (12)
+                                                                          ib bs 
+                        00          
+
+
+   Note that the same fictitious force terms, namely the centrifugal and Euler terms,
+apply as in the linear acceleration case. The difference here is that the whole term
+is rotated by the relative change in orientation ibs dt.
+
+
+Higher-Order Terms
+
+  The wave packet is potentially affected in the presence of gravity gradients or
+gravitational waves, which leads to higher-order phase shift terms with respect to
+TENNSTEDT et al.
+
+
+
+the integration time (Antoine & Borde, 2003; Bongs et al., 2006). For the terres-
+trial navigation case considered herein and the often limited dimensions of CAI
+vacuum chambers, the interrogation time T is comparably short, typically in the
+range of 10–25 ms. Thus, higher-order terms only have a diminishing effect in the
+face of terms resulting from rotation and linear acceleration and, consequently, can
+be neglected.
+   This situation changes drastically in space applications (Trimeche et al., 2019),
+where large interrogation times of several seconds are achievable and gravity gra-
+dients as well as higher-order terms can no longer be ignored.
+
+
+3.2       Evaluation of the Atom Strapdown Phase Prediction
+
+   To evaluate the atom strapdown method, this technique is compared with a
+second method to extract the interferometer phase: the convolution of accelera-
+tion sensor signals with the interferometer sensitivity function. This method is a
+common way to hybridize the signals of conventional sensors with the atom inter-
+ferometer response and is used by different groups, e.g., Richardson et al. (2020),
+Cheiney et al. (2018), and Zahzam et al. (2022). First, this method is briefly sum-
+marized. Then, the predicted phase shift of the atom strapdown method and the
+convolution are compared based on an experimental data set Richardson et al.
+(2020). In that experiment, the acceleration data of the sensor frame are measured
+by an optomechanical resonator (OMR) attached to the retroreflection mirror of
+the interferometer. This sensor is a mere prototype, and its characteristics are only
+briefly stated.
+
+
+Phase Reconstruction by Convolution
+
+  To reconstruct the atom interferometer response that has been distorted because
+of acting ambient ground vibrations, the OMR signal is convolved with the acceler-
+ation sensitivity function f (t ) of the atom interferometer, given in Equation (13)
+and shown in Figure 4. This convolution is then integrated over the interferometer
+duration to calculate the corresponding phase correction value for that particular
+atom interferometer shot, as shown in Equation (14):
+
+
+                   
+                1 1  cos( t )
+                eff
+                                
+                               eff                    for         0 < t 
+               t  1                               for          < t  T 
+                eff
+               
+      f (t )  
+                       
+               T  1 1  cos( (t  T ))
+                      eff         eff               for         T   < t  T  3
+                                                                                             (13)
+                           1
+               2T  3    t                       for         T  3 < t  2T  3
+                          eff
+
+
+                   
+                eff
+                                         
+                1 1  cos(eff (t  2T ))            for         2T  3 < t  2T  4
+               0                                     for         otherwise
+               
+
+
+   Here, Ωeff is the effective Rabi frequency, τ is the laser pulse duration, and T
+is the interrogation time:
+
+                                          
+                              vib  keff  f (t )avib (t )dt                                (14)
+                                          
+                                                                           TENNSTEDT et al.
+
+
+
+
+F IGURE 4       Acceleration sensitivity function of the atom interferometer according to
+Equation (13)
+
+
+   The OMR has a sensitivity on the order of 10–5 m/s² for frequencies above 10 Hz;
+at lower frequencies, 1/f noise dominates. Therefore, the OMR is capable of sup-
+pressing ambient vibrational noise for interferometers with lower integration
+times, with a maximum limit of 10 ms for good fringe reconstruction. This lim-
+itation arises because interferometers with lower T have a higher corner cut-off
+frequency, which is given by 1 / 2T; therefore, higher-frequency vibrations will be
+capable of inducing noise to the interferometer. Beyond an interrogation time of
+10 ms, the fringe reconstruction performance obtained via the OMR signal declines
+because of its poor low-frequency performance.
+   The acceleration data were acquired at a rate of 100 kHz throughout the interfer-
+ometer duration, which spans TMZ = 0.02003 s. Consequently, for each shot of the
+atom interferometer, 2003 acceleration measurement samples are integrated over
+the interferometer duration in the strapdown in order to calculate the atom posi-
+tion in the sensor frame by using the equations in Section 3.1.3. The positions at the
+times of the atom–laser interactions are then used in Equation (4) to compute the
+phase shift. The Earth turn rate at the local latitude, 52.38°, is used as input for Ωiss .
+
+
+Evaluation
+
+  The resulting phase shifts from both methods show good agreement, cf., Figure 5.
+However, a relatively constant offset of approximately 0.04% is visible, as well as
+occasional spikes of up to 0.186%. The largest difference during the whole experi-
+ment with over 17000 CAI shots is approximately 2%.
+  One possibility for the deviation lies in the beam splitter pulse durations, which
+are not yet considered in the atom strapdown method. The two state splitter pulses
+each have a duration of 7.5 µs, while the duration of the mirror pulse is twice as
+long, leading to a total of 30 µs. During these pulses, the sensitivity of the interfer-
+ometer regarding the inertial quantity changes, following a sinusoidal pattern, cf.,
+Equation (13). Because of the 100-kHz accelerometer data rate, approximately 3–5
+of the 2003 data points are integrated differently in the two methods.
+  Finally, we include some general remarks on the two methods: The convolution
+technique uses the sensitivity of the atom interferometer with respect to changes
+in the phase shift, which is then further related to the sensitivity to the acceleration
+of the sensor frame.
+                              TENNSTEDT et al.
+
+
+            30                                                                                                 0.2
+                           Convolution
+                           Atom Strapdown
+            20
+                                                                                                              0.15
+
+
+
+
+                                                                                         Relative error [%]
+[rad]
+            10
+
+             0                                                                                                 0.1
+Predicted
+
+
+
+
+            -10
+                                                                                                              0.05
+            -20
+
+            -30                                                                                                 0
+                  0   10       20      30   40    50      60   70   80    90    100                                  0   10   20   30   40    50      60   70     80   90   100
+                                                 Shot #                                                                                      Shot #
+
+
+                              F IGURE 5 Comparison of the two phase shift calculation methods
+                              Left: The two results generally agree very well, and a deviation is hardly visible. Right: The relative
+                              error, i.e., the difference between the results of the methods divided by the half-sum of both
+                              results, reveals a nearly constant systematic offset of approximately 0.04%, whereas larger spikes
+                              occur for some shots. Depicted are the first 100 CAI measurement intervals typical for a data set
+                              of 17440 measurements in total.
+
+
+                                In the atom strapdown method, the position of the atoms is calculated explicitly.
+                              However, the phase shift in Equation (1), which uses the atom position as input,
+                              originates from the sensitivity of the atom interferometer response. Thus, the con-
+                              volution method can be seen as a more specialized and slim way of combining sig-
+                              nals of different sensors with the CAI measurement, whereas the atom strapdown
+                              method is a more general approach, allowing the consideration of arbitrary target
+                              frames.
+                                The new method can be further used to include different motion models and
+                              dynamics in the differential equation system. Furthermore, different sensors could
+                              be utilized to predict the atom position, for example, odometry from car wheels or
+                              visual sensors.
+
+
+                              3.3           Implementation of Phase Prediction in a Hybrid Filter
+
+                                 Thus far, the atom strapdown method has been introduced as a way to predict
+                              the phase shift of an atom interferometer in an arbitrary sensor frame. The gen-
+                              eral steps for implementing the phase shift prediction in a filter framework (see
+                              Figure 6) have been sketched in prior works, e.g., Tennstedt & Schön (2021). Some
+                              important aspects are now repeated and explained, including the adaption of the
+                              measurement model, as the new dynamic equations need some special care.
+                                 It is worth stressing the clear differentiation between the kinematic state of the
+                              moving platform calculated in the IMU strapdown, i.e., the position x neb and veloc-
+                              ity v neb of the body frame (index b) with respect to the Earth frame (index e) as well
+                              as the attitude Cnb in a target navigation frame (superscript n), from the kinematic
+                              state of the atom wave packet in the sensor frame (atom strapdown). The param-
+                              eters that are used in both systems are the bias of the accelerations ba and angu-
+                              lar rate measurements b g . The kinematic state of the wave packet changes with
+                              each new measurement cycle; thus, it is not necessary to keep track of these states
+                              beyond the corresponding measurement interval. Consequently, the state vector of
+                              the filter inherits the kinematic state of the platform with the IMU bias as a state
+                              augmentation:
+
+                                                                     x = [x neb , v neb , ba , b g ]T                                                     (15)
+                                                                                       TENNSTEDT et al.
+
+
+
+
+F IGURE 6 Integration of the atom strapdown method in a filter and simulation framework
+The CAI response (phase shift φ ) is predicted by the conventional IMU data and fused with the
+actual CAI observation p in the error state extended Kalman filter (ES-EKF) to estimate the bias
+of the IMU sensors.
+
+
+  With this design decision, the filter innovation, which is based on the atom phase
+shift model, can also be used to correct the kinematic state of the platform, due to
+coupling with the bias in the system model. The corresponding transition matrix F
+over the course of a system time step ∆t is as follows:
+
+                                 I3     I3 t    1 n
+                                                   C t 2      03 
+                                                 2 b              
+                                0         I3      Cnb t      03 
+                             F  3                                                               (16)
+                                  0        03        I3        03 
+                                 3                                
+                                0         03        03        I3 
+                                 3
+
+  The uncertainties for the accelerometers w a and gyroscopes w g are modeled
+as white noise with respective variances σ n2 and random walk processes. The vari-
+       2 of the latter is modeled by an integrator with white noise w
+ance σ rw                                                             rw ,in as input,
+                                                        2
+sampled from a Gaussian distribution with variance  rw ,in t. For each individual
+axis and sensor, the process reads as follows:
+
+                             wrw (t  t )  wrw (t )  wrw ,in (t )                              (17)
+
+  The processes are combined in the system perturbation vector w = [ w a , w g ]T
+and affect the bias of the accelerations and angular rates. Hence, the perturbation
+input B matrix reads as follows:
+
+                                           03      03 
+                                                       
+                                            0       03 
+                                        B 3                                                     (18)
+                                          I        03 
+                                           3           
+                                          0        I3 
+                                           3
+
+where the covariance matrix is given as follows:
+
+              2I  03   ( a2,n   a2,rw ,in t )I3                    03               
+        Qw   a 3                                                                            (19)
+              03   g2 I3        03                        ( g ,n   g2,rw ,in t )I3 
+                                                                   2
+             
+TENNSTEDT et al.
+
+
+
+  The discrete time process noise matrix with subscript k indicating the time step
+t  t  t can then be assembled:
+
+                                      t  t
+                              Qk   FBQw BT FT dt                                (20)
+                                        t
+
+  The remaining equations follow that of a regular EKF with error states, as
+described in Tennstedt et al. (2021). Thus, at the filter step at time step k, the total
+state xˆ k is updated with the estimated error state δ xˆ k :
+
+                                     xˆ=
+                                       +
+                                       k xˆ k− + δ xˆ k+                          (21)
+  The superscript − denotes a predicted state, whereas + denotes a filtered state.
+At each filter update, the predicted error state is always initialized as zero; hence,
+the filtered error state is essentially the difference between the CAI observation pk
+and the predicted observation h ( xˆ k− ), weighted by the Kalman gain K k :
+
+                              δ xˆ k+ = K k ⋅ ( pk − h ( xˆ k− ))                 (22)
+
+  The observation model h of the CAI is based on the phase prediction obtained
+from the IMU data. The acceleration measurement of the IMU, fibb , must be
+adapted in order to include a potential deviation ba , i.e., bias, from the true accel-
+eration value fibb :
+
+                                      f=b
+                                       ib fibb + ba                              (23)
+
+  The analytical CAI observation equation per axis is the transition probability p:
+
+                                   1
+                              p
+                                   2
+                                     1  cos(0     )                      (24)
+
+where φ0 is the steered laser phase and φ is the phase shift prediction from the
+IMU data. Readout contrast and offset of the actual signal are not considered in
+the scope of this paper. In fact, only the contrast affects the sensitivity in a real
+application.
+  The steered phase φ0 is set such that the sum of φ0 and φ equals π2 in order to
+maximize the sensitivity with respect to the additional bias-induced phase shift  .
+  The derivative of Equation (24) with respect to the accelerometer bias reads as
+follows:
+
+                          p              1            
+                             |  =    sin (   )                           (25)
+                         ba 0       2    2     2       ba
+
+  In the limit of   0, we obtain the following:
+
+                              p    1          1 
+                        lim        sin ( )                                    (26)
+                        0 ba    2     2 ba    2 ba
+
+  The observation matrix Ha for the acceleration bias is then written as follows:
+
+                             p    1              1
+                     Ha          ( k s )T T 2  ( k s )T ibsT 3               (27)
+                            ba    2              2
+
+  Only the acceleration and mixed term, cf., Equation (10) and Equation (12),
+respectively, are sensitive for an acceleration bias. Because of the skew-symmetric
+matrix Ωibs , the second term is non-zero only if the angular rate in the direction of
+                                                                                         TENNSTEDT et al.
+
+
+
+the respective perpendicular axes is non-zero. This result is in line with the prior
+statement that the phase shift on a particular sensitive CAI axis is only affected by
+rotations perpendicular to the axis.
+  The observation matrix H g for the gyroscope bias follows a similar pattern. The
+IMU gyroscope measurement ωibb consists of the true angular rates ω ibb and the
+bias b g :
+
+                                             b
+                                            ω=  b
+                                             ib ωib + b g                                            (28)
+
+     The derivative of Equation (24) with respect to the gyroscope bias is as follows:
+
+                                  p               1             
+                                      |           sin (   )                                    (29)
+                                 b g 0  = 2    2      2       b g
+
+     As before, the limit of   0 gives the following:
+
+                                     p     1           1 
+                               lim         sin ( )                                               (30)
+                               0 b g    2     2 b g    2 b g
+
+  The observation matrix H g for the gyroscope bias results in a rather extensive
+expression:
+
+            p 1 s T            s )]T 2  1 ( k s )T  s [ x s ]T 2  ( k s )T [ v s ]T 2
+    Hg         ( k ) [(ibs x bs                     ib     bs                     sa
+           b g 2                          2
+                   1                        1                     s )]T 3  1 ( k s )T  s [( s x s )]T 3
+                   ( k s )T [fibs ]T 3  ( k s )T [ibs (ibs x bs                     ib    ib bs
+                  2                        2                                  2
+                   1                       s ])T 3  1 ( k s )T [(  s x s )]T 3
+                   ( k s )T ibs (ibs [x bs                         ib bs                             (31)
+                   2                                  2
+
+   The first two terms come from the derivative of the centrifugal term with
+respect to the gyroscope bias. The term ( k s )T [ v sa  s ×]T 2 resembles the Coriolis term
+
+observed for the atoms in a rotating s-frame. This term scales with the atom veloc-
+ity. The fourth term 21 ( k s )T [fibs ×]T 3 results from the partial derivative of the mixed
+term, which scales with the linear accelerations. Terms five to seven are produced
+by the product rule when differentiating the centrifugal term between the b- and
+s-frame. The final Euler term including the angular acceleration Ω              s is not con-
+                                                                                ib
+sidered for the EKF measurement linearization in the frame of this work because
+of the inaccessibility of these values. The angular accelerations can be acquired
+by either numerical differentiation of the turn rates or state vector augmentation
+when using at least three conventional IMUs. However, the first method is rather
+inaccurate because of the differentiation of gyroscope white noise in the signal,
+whereas the second method may be evaluated in a future study.
+   The complete observation matrix H can now be constructed:
+
+                                            
+                                       H  0 0 Ha            Hg                                     (32)
+
+  Thus far, the observation equation and matrices in the s-frame have been stated
+for an arbitrary CAI observation on a single sensitive axis as defined by the wave
+vector k s . In the six-degree-of-freedom case, there are now two measurements per
+spatial axis at a time in order to differentiate between angular rates and linear accel-
+erations. In this case, the observation vector reads p = [pxA , p yA , pzA , pxB , p By , pzB ]T ,
+where the superscripts A and B refer to anti-parallel propagating wave pack-
+ets after the initial separation split. The individual phase shifts are predicted
+TENNSTEDT et al.
+
+
+
+for each observation independently; thus, for three sensitive CAI axes with two
+counter-propagating wave packets, there is a total of six different predicted atom
+wave packet states.
+  For now, it is assumed that the interferometers on all axes perform measure-
+ments at the same time. Thus, the observation matrices are individually computed
+according to Equations (27) and (31) with the respective k s and v sa
+                                                                   s and are finally
+
+added together to produce a single update step.
+
+
+4       RESULTS AND DISCUSSION
+
+4.1       Impact of Dynamics on Phase Shift Terms
+
+Setting
+
+   We now consider a hybrid solution between a conventional IMU and the CAI
+according to the multi-axis scheme. The previous equations revealed a number of
+fictitious force terms when the IMU measurement is transformed from the b-frame
+to the sensor frame. To evaluate the impact of different dynamics on the single
+phase shift terms, a trajectory with a constant velocity of 1 m/s in the driving direc-
+tion s1 as well as one period of a sinusoidal changing yaw rate with an amplitude
+of 0.05 rad/s is simulated. With these settings, it is possible to apply an angular rate
+and angular acceleration on s3 and an accelerations in the s2 direction and thus
+excite all phase shift terms.
+   The goal is to determine to which order of magnitude the single terms affect
+the phase shift of the interferometer. Afterwards, the effect of the most dominant
+terms on the error phase shift in the case of an IMU bias is evaluated depending on
+the sensor distance x bss .
+
+
+
+
+Results
+
+   The results in Figure 7 show that in the forward direction, the rotation term is
+dominant. Whereas the Euler and centrifugal terms of the acceleration as well as
+the mixed term generally scale with the distance between the b- and s-frames, the
+largest effect arises from the centrifugal term. In the right direction, the largest
+impact results from the lateral accelerations of the trajectory. However, the angu-
+lar accelerations are scaled by the lever arm as well, which leads to an increased
+Euler term that surpasses even the lateral accelerations in parts of the simulation
+when the lever arm is set to 1 m, e.g., at t = 25 s. Regarding the mixed terms, the
+effect is generally quite small. In fact, the mixed term resembles the transformation
+terms of the linear accelerations, scaled by the integrated angular rates. Thus, for
+most terrestrial applications, these terms are smaller than the centrifugal and Euler
+terms from the transformation of the linear acceleration alone.
+   Next, we focus on the effect of the lever arm on the dynamic terms. In contrast
+to the prior example, the error of the predicted phase in the case of a bias in the
+accelerations and angular rates is now examined. Instead of a time-dependent tra-
+jectory, only a slice of the trajectory with the dynamics at an exact time is given. The
+phase error in this situation is evaluated based on the size of the lever arm, where
+  s  [,  , 0]T is varied in the interval  ∈[0, 1] m on an equidistant scale.
+x bs
+   The parameters are set as follows, according to the maximum values that can be
+expected for typical maneuvers. A constant angular rate ibs  [0.1, 0.1, 0.5]T rad/s
+and acceleration fibs  [3, 4, 5]T m/s 2 represent the dynamic situation. The
+                                                                                      TENNSTEDT et al.
+
+
+
+
+F IGURE 7 Impact of the different transformation terms on the CAI phase shift in the
+forward (top panels) and right (bottom panels) direction
+The figures show the magnitude of the phase shift. A logarithmic scale is chosen to facilitate the
+separation of the single dynamic terms, as the mixed terms are comparably small. Similarly, the
+y-axis is limited to the range of [10 −5 , 103 ] rad to avoid unfavorable scaling. As expected from the
+dynamic equations, the lever arm x bs     s = [, 0, 0]T , where  is the value indicated in the title of
+
+each subfigure, linearly scales the centrifugal (Centri) and Euler parts of both the acceleration
+and mixture term.
+
+
+angular rate and angular acceleration for the mixture Euler term are scaled down
+by a factor of 1 / 2 to account for being normally phase-shifted by 90 degrees
+with respect to each other, as Figure 7 demonstrates in the right direction for the
+example of the Euler and acceleration terms.
+   The constant biases of the acceleration and angular rate signals are defined as
+ ba  10 4 m/s 2 and bg  3  10 5 rad/s on all axes.
+   The interrogation time and wave numbers are T = 25 ms and k x , y, z  4 /780 nm,
+respectively. The initial atom velocity v sas = [0, 0.096, 0]T m/s is summed with the
+                                   s
+integrated linear accelerations fib ⋅ 2T in order to emulate the largest atom velocity to
+be expected.
+   As shown in Figure 8, the linear acceleration and the rotation in the correspond-
+ing direction are naturally independent of the lever arm. The acceleration has a rel-
+atively large impact, which is caused by the comparably large accelerometer bias.
+The two terms that show the greatest scaling with the magnitude of the lever arm
+are the centrifugal and Euler terms. This trend matches the results in Figure 7,
+but also shows that even a small distance of 0.4 m in any direction can surpass the
+dynamic range defined by the atom interferometer measurement equation.
+
+
+4.2         Impact of Dynamics on Bias Estimates
+
+   Thus far, the new algorithms have been introduced and the adaption of a hybrid
+filter presented. The results have indicated that the spatial displacement x bss
+TENNSTEDT et al.
+
+
+
+
+F IGURE 8 Phase shift errors induced by accelerometer and gyroscope bias depending on the
+spatial distance between the IMU and CAI
+The dotted black line represents the maximum allowed phase shift in order to stay on one flank
+of the cosine signal, i.e., the maximum dynamic range of the CAI observation. The magenta line
+is the sum of all phase shift terms. The coning terms are combined under Mix Terms because
+of their comparably low magnitude. The lever arm range of values represents the value  in
+  s  [,  , 0]T .
+x bs
+
+
+between the CAI and the IMU might lead to difficulties for the bias estimate. The
+correction of this bias is a crucial step in improving the hybrid navigation solution.
+Based on another trajectory derived from a number of different dynamic experi-
+ments (Weddig et al., 2022), the effect of the dynamics in the s-frame on the bias
+estimate is further investigated.
+
+
+Setting
+
+   A trajectory that involves most of the maneuvers identified in the analysis of
+different data sets collected with IMUs during real-world measurement campaigns
+is simulated, cf., Figure 9. After an initial static phase, an accelerated phase follows
+with some minor vibrations on all axes. This phase is followed by a sliding right
+turn, with only the angular rate changing. Afterwards, a left turn is applied with
+accelerations in the b1 and b2 directions, as well as a spike in both signals at
+t = 26 s. The trajectory is concluded with another accelerated phase with vibrations
+and a small turn rate on the b3 axis.
+   The simulated IMU acceleration signal is affected by a discrete white noise pro-
+cess with a standard deviation of 5  10 5 m/s 2 . Additionally, a random walk pro-
+cess based on integrated white noise with variance 9  10 10 m 2 /s5 is applied in
+order to introduce a significant drift of the signal. The gyroscope measurement
+consists of the angular rates with additive white noise samples with a standard
+deviation of 1.4544  10 5 rad/s and a random walk process with input white noise
+sampled from a variance of 4  10 14 rad 2 /s3 . This measurement corresponds to
+the performance of a navigation-grade ringlaser gyroscope. The data rate of the
+simulated trajectory and the IMU is 200 Hz. The CAI is modeled with a discrete
+white noise process with a variance of 1  10 3 a.u. added to the transition proba-
+bility. The interrogation time is set to T = 25 ms, corresponding to a filter rate of
+t  2T = 50 ms, with no dead or readout times considered. The uncertainty of the
+simulated CAI translates to a phase uncertainty of approximately 63 mrad or, in
+                                                                               TENNSTEDT et al.
+
+
+
+
+F IGURE 9 Trajectory generated from the measured data showing the accelerations (left)
+and rotation rates (right)
+The track includes several different maneuvers of 7.5 s length each, including a stationary phase
+with oscillations on the different sensor axes, timed accelerations, and turn maneuvers.
+
+
+conjunction with the interrogation time, an acceleration uncertainty with a stan-
+dard deviation of 6.3 10 6 m/s 2 per shot.
+   A spatial displacement of x bs  s =[0, 0, 0.1]T m is applied, which was selected
+
+based on the results from the previous section, where the values for fibb and ω ibb
+are based on the maximum amplitude of the oscillations and the bias is equal to
+the deviation of approximately 2σ for the respective white noise process. This
+distance may resemble an IMU placed directly over the atom interferometer frame.
+The simulation was processed in 100 different runs, in which all noise processes
+were sampled independently. Importantly, this number allows for the intended
+qualitative discussion, but is not sufficient for a statistically proven Monte-Carlo
+analysis, as twelve independent variables are sampled in total.
+   Note that in the trajectory at approximately 26 s, when the large spike in acceler-
+ations in the x and y direction occurs, the oscillation amplitude in the acceleration
+signal in the z direction also reaches its maximum. At the same time, the ampli-
+tude of the angular rates in x and y peaks, while a large turn rate in the z direction
+is present as well. According to the experiment in the previous section, it can be
+expected that the phase shift error resulting from this situation might be similar
+to or even larger than the dynamic range of the atom interferometer and thus pro-
+duce an error in the filtered solution.
+
+
+Results
+
+   The acceleration bias estimates, cf., Figure 10, are able to follow the noise process
+quite well, and the effects of the dynamics of the trajectory can hardly be seen. The
+increase in uncertainty over time, as reflected in the empirical standard deviation,
+is explained by the random walk that was added to the base signals. In the standard
+deviation of the gyroscope bias, two distinct peaks can be seen at approximately
+26 s and 33–35 s, prominently in the x and y direction. This expected decrease in
+performance is also visible in the velocity v neb state, cf., Figure 11. Although the
+velocity estimate of the hybrid solution is largely improved during the first 25 s
+with a factor of approximately 100 at best, there is a sudden increase in the error at
+approximately 26 s. The acceleration spikes in the trajectory scale with the accel-
+erometer and gyroscope errors in the mixed term, leading to a comparably large
+phase error. At 33 s, a similar case occurs when the magnitude of the trajectory
+signals on all axes is at a local maximum.
+TENNSTEDT et al.
+
+
+
+
+F IGURE 10 Simulation results for the estimated acceleration and gyro biases
+Top panels: Acceleration and gyroscope bias (blue lines, added to the simulated reference
+as additive noise signal) and the estimated bias states (red lines) as an example for one of the
+simulated instances. Left: The acceleration bias estimate is more noisy in the x and y directions.
+This result is due to the fact that the spatial displacement of the IMU is only in the z direction;
+hence, the centrifugal term has no effect in this direction. Bottom figures: Empirical standard
+deviation between simulated instances for the acceleration bias estimates (left) and gyroscope
+bias estimates (right).
+
+
+
+
+F IGURE 11 Results for the estimated velocity
+Left: ∆v neb velocity error of the hybrid EKF solution (blue) and the IMU strapdown solution (red),
+with respect to the simulated ground truth. Depicted is the magnitude of the three-dimensional
+vector of the mean velocity error of the state instances. Right: Empirical standard deviation
+between the individual solutions.
+
+
+  In total, the error of the predicted phase was larger than π /2 in approximately
+14% of the CAI measurements. This result does not necessarily imply that the tar-
+get fringe is lost and the EKF update fails, as convergence to the true trajectory is
+generally still possible in the range of  . Nevertheless, a larger linearization error
+occurs when the measurement sensitivities are computed in these cases, leading
+to a non-optimal update of the filter despite the fact that the trajectory is resolved
+                                                                                  TENNSTEDT et al.
+
+
+
+
+F IGURE 12 Velocity state estimates for a smooth slalom trajectory
+Left: ∆v neb velocity error of the hybrid solution (blue) and the IMU strapdown solution (red), with
+respect to the simulated ground truth. Depicted is the magnitude of the three-dimensional vector.
+Right: Empirical standard deviation between the individual solutions.
+
+
+by the IMU and the innovation pk − h ( xˆ k− ) in Equation (22) is independent of the
+linearization.
+   For comparison, the results of a smooth slalom trajectory without any spikes
+in the signals are depicted in Figure 12. The CAI-aided EKF solution allows an
+improvement of over two orders of magnitude as compared with the IMU strap-
+down solution alone.
+
+
+5       CONCLUSION
+
+  In this paper, the atom strapdown method was introduced and explained, as well
+as its application for state prediction in an EKF. This hybridization technique based
+on a classical IMU and a CAI has two main qualities: First, it allows the phase shift
+of an atom interferometer to be predicted based on data from a conventional IMU.
+Equations were developed in a newly introduced sensor frame for the CAI. Second,
+this method allows one to combine measurements of an atom interferometer with
+conventional IMU measurements, in order to correct for IMU biases.
+  A comparison between the strapdown method and the hybridization technique
+based on convolution, developed and used in the physics community, shows that
+both methods deliver comparable results in the predicted CAI phase shift, while
+the atom strapdown method is a more general concept that allows the consid-
+eration of different dynamics and sensor systems. The methods were compared
+based on a static data set. Further kinematic experiments, including a one-axis CAI
+with controlled time-varying accelerations as well as a full six-degree-of-freedom
+setup, are currently planned. More detailed CAI models that include the effects of
+dynamics and temperature on the atoms will be investigated as well.
+  Taking the dynamics from real car trajectories obtained from IMU measure-
+ments, our simulations showed that it is possible to produce a valid hybrid solution
+of a conventional IMU and a six-axis CAI, as the trajectory states and biases are
+reliably estimated. Comparison with an IMU-only solution showed performance
+improvements of about two orders of magnitude. In the case of large signal spikes
+on several axes at the same time, the solution loses accuracy due to cross-coupling
+of different axes and due to a scale effect induced by the transformation from the
+b- to s-frame. Methods for identifying those situations on the fly in order to discard
+the CAI measurement if necessary will be investigated in future studies.
+  In addition, two conclusions for practical implementation can be drawn: First,
+the lever arm, especially between the accelerometer and the CAI, should be kept
+TENNSTEDT et al.
+
+
+
+small. The actual limit is strongly related to the IMU noise characteristics and
+the dynamics that are expected in individual applications. The exemplary study
+in Section 4.1 revealed that a distance of 40 cm between the two sensors was the
+maximum for the dynamic situation considered. Similar assessments could be per-
+formed for further applications. The distance is less important for the gyroscope, as
+the transformations from the b- to s-frame in Equation (8) show that the angular
+rate measurement is not affected by the lever arm. Solutions such as the OMR
+prototype applied directly to the retroreflection mirror of the CAI seem to provide
+a valid option for future hybrid accelerometer implementations, while at the same
+time, a high-precision gyroscope with a larger distance to the CAI could be used.
+  Second, the best situations for using a CAI in conjunction with an IMU might
+be in navigation tasks in which no spikes in the trajectory signals occur, e.g., in
+maneuvers with nearly constant acceleration and turn rates. Even if the EKF can
+cope with those situations, the best performance is achieved in smooth maneuvers.
+More specific applications must be examined in the future.
+
+acknowledgments
+  This research was funded by the Federal Ministry for Economic Affairs and
+Climate Action (BMWK) due to an enactment of the German Bundestag under Grant
+50RK1957 (QGyro) and 50NA2106 (QGyro+). The team also acknowledges funding
+from the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation)
+under Germany’s Excellence Strategy—EXC-2123 QuantumFrontiers—Project-ID
+390837967.
+
+conflict of interest
+  The authors declare no potential conflict of interests.
+
+references
+Antoine, C., & Borde, C. J. (2003). Quantum theory of atomic clocks and gravito-inertial sensors:
+  An update. Journal of Optics B: Quantum and Semiclassical Optics, 5(2), 199–207. https://doi.
+  org/10.1088/1464-4266/5/2/380
+Barrett, B., Gominet, P.-A., Cantin, E., Antoni-Micollier, L., Bertoldi, A., Battelier, B.,
+  Bouyer, P., Lautier, J.-M., & Landragin, A. (2014). Mobile and remote inertial sensing with
+  atom interferometers. Proc. of the International School of Physics “Enrico Fermi”, 188, 493–555.
+  https://doi.org/10.3254/978-1-61499-448-0-493
+Bongs, K., Launay, R., & Kasevich, M. (2006). High-order inertial phase shifts for time-domain
+  atom interferometers. Applied Physics B, 84(4), 599–602. https://doi.org/10.1007/s00340-006-
+  2397-5
+Cheiney, P., Fouché, L., Templier, S., Napolitano, F., Battelier, B., Bouyer, P., & Barrett, B. (2018).
+  Navigation-compatible hybrid quantum accelerometer using a Kalman filter. Physical Review
+  Applied, 10(3), 034030. https://doi.org/10.1103/physrevapplied.10.034030
+Freier, C., Hauth, M., Schkolnik, V., Leykauf, B., Schilling, M., Wziontek, H., Scherneck, H.-G.,
+  Müller, J., & Peters, A. (2016). Mobile quantum gravity sensor with unprecedented stability.
+  Journal of Physics: Conference Series, 723, 012050. https://doi.org/10.1088/1742-
+  6596/723/1/012050
+Gauguet, A., Canuel, B., Lévèque, T., Chaibi, W., & Landragin, A. (2009). Characterization and
+  limits of a cold-atom Sagnac interferometer. Physical Review A, 80(6), 063604. https://doi.
+  org/10.1103/physreva.80.063604
+Gebbe, M., Siemß, J.-N., Gersemann, M., Müntinga, H., Herrmann, S., Lämmerzahl, C., Ahlers, H.,
+  Gaaloul, N., Schubert, C., Hammerer, K., Abend, S., & Rasel, E. M. (2021). Twin-lattice atom
+  interferometry. Nature Communications, 12(1), 2544. https://doi.org/10.1038/s41467-021-
+  22823-8
+Gersemann, M., Gebbe, M., Abend, S., Schubert, C., & Rasel, E. M. (2020). Differential
+  interferometry using a Bose-Einstein condensate. The European Physical Journal D, 74(10),
+  203. https://doi.org/10.1140/epjd/e2020-10417-8
+HosseiniArani, A., Tennstedt, B., Schilling, M., Knabe, A., Wu, H., Schön, S., & Müller, J. (2022).
+  Kalman-filter based hybridization of classic and cold atom interferometry accelerometers
+  for future satellite gravity missions. In International Association of Geodesy Symposia. 1–11.
+  Springer, Berlin, Heidelberg. https://doi.org/10.1007/1345_2022_172
+                                                                                    TENNSTEDT et al.
+
+
+Jekeli, C. (2005). Navigation error analysis of atom interferometer inertial sensor. NAVIGATION,
+  52(1), 1–14. https://doi.org/10.1002/j.2161-4296.2005.tb01726.x
+Kasevich, M.,Weiss, D. S., Riis, E., Moler, K., Kasapi, S., & Chu, S. (1991). Atomic velocity selection
+  using stimulated Raman transitions. Physical Review Letters, 66(18), 2297–2300. https://doi.
+  org/10.1103/physrevlett.66.2297
+Kasevich, M. A., & Chu, S. (1992). Measurement of the gravitational acceleration of an atom
+  with a light-pulse atom interferometer. Applied Physics B, 54, 321–332. https://doi.org/10.1007/
+  BF00325375
+Richardson, L. L., Rajagopalan, A., Albers, H., Meiners, C., Nath, D., Schubert, C.,
+  Tell, D., Wodey, É., Abend, S., Gersemann, M., Ertmer, W., Rasel, E. M., Schlippert, D.,
+  Mehmet, M., Kumanchik, L., Colmenero, L., Spannagel, R., Braxmaier, C., & Guzmán, F.
+  (2020). Optomechanical resonator-enhanced atom interferometry. Communications Physics,
+  3(1), 208. https://doi.org/10.1038/s42005-020-00473-4
+Roura, A., Zeller, W., & Schleich, W. P. (2014). Overcoming loss of contrast in atom interferometry
+  due to gravity gradients. New Journal of Physics, 16(12), 123012. https://doi.org/10.1088/1367-
+  2630/16/12/123012
+Savage, P. G. (1998). Strapdown inertial navigation integration algorithm design part 2: Velocity
+  and position algorithms. Journal of Guidance, Control and Dynamics, 21(2), 208–221. https://
+  doi.org/10.2514/2.4242
+Schubert, C., Abend, S., Gersemann, M., Gebbe, M., Schlippert, D., Berg, P., & Rasel, E. M.
+  (2021). Multi-loop atomic Sagnac interferometry. Scientific Reports, 11(1), 16121. https://doi.
+  org/10.1038/s41598-021-95334-7
+Templier, S., Cheiney, P., d’Armagnac de Castanet, Q., Gouraud, B., Porte, H., Napolitano, F.,
+  Bouyer, P., Battelier, B., & Barrett, B. (2022). Tracking the vector acceleration with a hybrid
+  quantum accelerometer triad. Science Advances, 8(45), eadd3854. https://doi.org/10.1126/
+  sciadv.add3854
+Tennstedt, B., & Schön, S. (2020). Dedicated calculation strategy for atom interferometry sensors
+  in inertial navigation. Proc. of the 2020 IEEE/ION Position, Location, and Navigation Symposium
+  (PLANS), Portland, OR. 755–764. https://doi.org/10.1109/PLANS46316.2020.9110142
+Tennstedt, B., & Schön, S. (2021). Integration of atom interferometers and inertial measurement
+  units to improve navigation performance. Proc. of the 2021 28th Saint Petersburg International
+  Conference on Integrated Navigation Systems (ICINS), Saint Petersburg, Russia. 1–9. https://doi.
+  org/10.23919/ICINS43216.2021.9470809
+Tennstedt, B., Weddig, N., & Schön, S. (2021). Improved inertial navigation with cold atom
+  interferometry. Gyroscopy and Navigation, 12(4), 294–307. https://doi.org/10.1134/
+  S207510872104009X
+Trimeche, A., Battelier, B., Becker, D., Bertoldi, A., Bouyer, P., Braxmaier, C., Charron, E.,
+  Corgier, R., Cornelius, M., Douch, K., Gaaloul, N., Herrmann, S., Müller, J., Rasel, E., Schubert,
+  C., Wu, H., & dos Santos, F. P. (2019). Concept study and preliminary design of a cold atom
+  interferometer for space gravity gradiometry. Classical and Quantum Gravity, 36(21), 215004.
+  https://doi.org/10.1088/1361-6382/ab4548
+Vermeulen, P., Lemoignc, N., Mcnoret, V., Busquet, C., Dcsruellc, B., Laurier-Gaud, J., Merlet, S.,
+  Landragin, A., Cook, A. K., & Bonvalot, S. (2018). Evaluating the performances of an operational
+  absolute quantum gravimeter. Proc. of the 2018 Conference on Precision Electromagnetic
+  Measurements (CPEM 2018), Paris, France. 1–2. https://doi.org/10.1109/CPEM.2018.8501047
+Weddig, N., Tennstedt, B., & Schön, S. (2022). Challenges for a hybrid CAI-based INS due
+  to trajectory dynamics derived from real inertial datasets. Proc. of the 2022 DGON Inertial
+  Sensors and Systems (ISS), Braunschweig, Germany. 1–20. https://doi.org/10.1109/
+  ISS55898.2022.9926311
+Weddig, N. B., Tennstedt, B., & Schön, S. (2021). Performance evaluation of a three-dimensional
+  cold atom interferometer based inertial navigation system. Proc. of the 2021 DGON Inertial
+  Sensors and Systems (ISS), Braunschweig, Germany. 1–20. https://doi.org/10.1109/
+  ISS52949.2021.9619776
+Zahzam, N., Christophe, B., Lebat, V., Hardy, E., Huynh, P.-A., Marquet, N., Blanchard, C.,
+  Bidel, Y., Bresson, A., Abrykosov, P., Gruber, T., Pail, R., Daras, I., & Carraz, O. (2022). Hybrid
+  electrostatic/atomic accelerometer for future space gravity missions. Remote Sensing, 14(14),
+  3273. https://doi.org/10.3390/rs14143273
+
+
+
+
+   How to cite this article: Tennstedt, B., Rajagopalan, A., Weddig, N.B.,
+   Abend, S., Schön, S., & Rasel, E. M. (2023). Atom strapdown: Toward inte-
+   grated quantum inertial navigation systems. NAVIGATION, 70(4). https://
+   doi.org/10.33012/navi.604
+
