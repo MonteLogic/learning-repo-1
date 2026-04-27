@@ -27,10 +27,7 @@ import sys
 from pathlib import Path
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-REPO_DIR    = Path(__file__).parent.resolve()
-SCRIPT_MD   = REPO_DIR / "audiobook_JCMNS_Vol40.md"
-CLEAN_TXT   = REPO_DIR / "audiobook_clean.txt"
-OUTPUT_MP3  = REPO_DIR / "audiobook_JCMNS_Vol40.mp3"
+# Paths will be set dynamically based on CLI arguments
 
 
 # ── Step 1: clean the markdown script ─────────────────────────────────────────
@@ -64,9 +61,9 @@ def clean_markdown(src: Path, dst: Path) -> None:
 
 
 # ── Step 2: synthesise with edge-tts ──────────────────────────────────────────
-async def synthesise(voice: str, rate: str, pitch: str) -> None:
+async def synthesise(voice: str, rate: str, pitch: str, clean_txt: Path, output_mp3: Path) -> None:
     """Use the edge_tts Python API directly to convert clean text to MP3."""
-    print(f"[2/3] Synthesising  {CLEAN_TXT.name}  →  {OUTPUT_MP3.name}")
+    print(f"[2/3] Synthesising  {clean_txt.name}  →  {output_mp3.name}")
     print(f"         voice={voice}  rate={rate}  pitch={pitch}")
 
     try:
@@ -75,16 +72,16 @@ async def synthesise(voice: str, rate: str, pitch: str) -> None:
         print("ERROR: edge-tts is not installed. Run: pip install edge-tts", file=sys.stderr)
         sys.exit(1)
 
-    text = CLEAN_TXT.read_text(encoding="utf-8")
+    text = clean_txt.read_text(encoding="utf-8")
     communicate = edge_tts.Communicate(text, voice=voice, rate=rate, pitch=pitch)
-    await communicate.save(str(OUTPUT_MP3))
+    await communicate.save(str(output_mp3))
 
 
 # ── Step 3: report ────────────────────────────────────────────────────────────
-def report() -> None:
+def report(output_mp3: Path) -> None:
     """Print file size and duration using ffprobe if available."""
-    print(f"[3/3] Done  →  {OUTPUT_MP3}")
-    size_mb = OUTPUT_MP3.stat().st_size / 1_048_576
+    print(f"[3/3] Done  →  {output_mp3}")
+    size_mb = output_mp3.stat().st_size / 1_048_576
     print(f"         Size: {size_mb:.1f} MB")
 
     try:
@@ -93,7 +90,7 @@ def report() -> None:
                 "ffprobe", "-v", "quiet",
                 "-show_entries", "format=duration",
                 "-of", "default=noprint_wrappers=1",
-                str(OUTPUT_MP3),
+                str(output_mp3),
             ],
             capture_output=True, text=True, check=True,
         )
@@ -112,6 +109,10 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
+    parser.add_argument("--input", default="audiobook_JCMNS_Vol40.md",
+                        help="Input markdown file")
+    parser.add_argument("--output", default="audiobook_JCMNS_Vol40.mp3",
+                        help="Output MP3 file")
     parser.add_argument("--voice", default="en-US-GuyNeural",
                         help="edge-tts voice name (default: en-US-GuyNeural)")
     parser.add_argument("--rate",  default="+10%",
@@ -125,16 +126,20 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    
+    script_md = Path(args.input)
+    output_mp3 = Path(args.output)
+    clean_txt = output_mp3.with_name(output_mp3.stem + "_clean.txt")
 
-    if not SCRIPT_MD.exists():
-        print(f"ERROR: source script not found: {SCRIPT_MD}", file=sys.stderr)
+    if not script_md.exists():
+        print(f"ERROR: source script not found: {script_md}", file=sys.stderr)
         sys.exit(1)
 
     if not args.skip_clean:
-        clean_markdown(SCRIPT_MD, CLEAN_TXT)
+        clean_markdown(script_md, clean_txt)
 
-    asyncio.run(synthesise(args.voice, args.rate, args.pitch))
-    report()
+    asyncio.run(synthesise(args.voice, args.rate, args.pitch, clean_txt, output_mp3))
+    report(output_mp3)
 
 
 if __name__ == "__main__":
